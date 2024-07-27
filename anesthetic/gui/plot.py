@@ -159,11 +159,16 @@ class RunPlotter(object):
 
     def __init__(self, samples, params=None):
         self.samples = samples
+        self.color = 'C0'
 
         if params:
             self.params = np.array(params)
         else:
-            self.params = np.array(self.samples.drop_labels().columns[:10])
+            from anesthetic.samples import NestedSamples, DiffusiveNestedSamples
+            if isinstance(self.samples, DiffusiveNestedSamples):
+                self.params = self.samples.params[:10]
+            else:
+                self.params = np.array(self.samples.drop_labels().columns[:10])
 
         self.fig = plt.figure()
         self._set_up()
@@ -236,27 +241,54 @@ class RunPlotter(object):
 
         Returns
         -------
+        TODO
         array-like:
             sample 'label'-coordinates.
 
         """
-        if self.type() == 'posterior':
-            beta = self.beta()
-            return self.samples.posterior_points(beta)[label]
+        from anesthetic.samples import NestedSamples, DiffusiveNestedSamples
+        if isinstance(self.samples, NestedSamples):
+            if self.type() == 'posterior':
+                beta = self.beta()
+                return self.samples.posterior_points(beta)[label], self.color
+            else:
+                i = self.evolution()
+                logL = self.samples.logL.iloc[i]
+                return self.samples.live_points(logL)[label], self.color
+        elif isinstance(self.samples, DiffusiveNestedSamples):
+            if self.type() == 'posterior':
+                # beta = self.beta()
+                # return self.samples.posterior_points(beta)[label], self.color
+                raise NotImplementedError("Posterior visualization is not supported yet for DNest4.")
+            else:
+                i = self.evolution()
+                samples = self.samples.samples_at_level(i, label)
+                return samples, self.color
         else:
-            i = self.evolution()
-            logL = self.samples.logL.iloc[i]
-            return self.samples.live_points(logL)[label]
+            raise NotImplementedError("Interactive plot for type", type(self.samples), "is not supported yet.")
 
     def update(self, _):
         """Update all the plots upon slider changes."""
-        logX = np.log(self.samples.nlive / (self.samples.nlive+1)).cumsum()
+        logX = self.samples.logX()
         beta = self.beta()
-        LX = self.samples.logL*beta + logX
-        LX = np.exp(LX-LX.max())
         i = self.evolution()
         logL = self.samples.logL.iloc[i]
-        n = self.samples.nlive.iloc[i]
+        from anesthetic.samples import DiffusiveNestedSamples
+        if isinstance(self.samples, DiffusiveNestedSamples):
+            n = np.max(self.samples.samples.ID.unique())
+            # LX = self.samples.samples['posterior weights']
+            # LX = logX
+            LX = self.samples.logL*beta + logX
+            LX = np.exp(LX-LX.max())
+        else:
+            n = self.samples.nlive.iloc[i]
+            LX = self.samples.logL*beta + logX
+            LX = np.exp(LX-LX.max())
+
+        import pandas as pd
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+            print('logX\n',logX)
+            print('LX\n', LX)
 
         self.triangle.update(self.points)
 
