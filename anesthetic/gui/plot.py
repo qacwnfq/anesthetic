@@ -5,6 +5,7 @@ from matplotlib.gridspec import (GridSpec as GS,
                                  GridSpecFromSubplotSpec as sGS)
 from anesthetic.gui.widgets import (Widget, Slider, Button,
                                     RadioButtons, TrianglePlot, CheckButtons)
+from anesthetic.plot import basic_cmap
 
 
 class Higson(Widget):
@@ -27,8 +28,8 @@ class Higson(Widget):
         self.ax.set_ylabel(r'$LX$')
         self.ax.set_xlabel(r'$\ln X$')
 
-        self.curve, = self.ax.plot([None], [None], 'k-')
-        self.point, = self.ax.plot([None], [None], 'ko')
+        self.curve, = self.ax.plot([None], [None], 'ko', markersize=0.5)
+        self.point, = self.ax.plot([None], [None], 'ro')
 
     def update(self, logX, LX, i):
         """Update the line and the point in the higson plot.
@@ -159,7 +160,7 @@ class RunPlotter(object):
 
     def __init__(self, samples, params=None):
         self.samples = samples
-        self.color = 'C0'
+        self.color = basic_cmap('C0')
 
         if params:
             self.params = np.array(params)
@@ -210,7 +211,9 @@ class RunPlotter(object):
         beta = np.logspace(-10, 10, 101)
         D_KL = self.samples.D_KL(beta=beta).to_numpy()
         self.beta = Beta(beta, D_KL, self.fig, gs0[1], self.update)
-        logX = self.samples.logX().to_numpy()
+        logX = self.samples.logX()
+        if not isinstance(logX, np.ndarray):
+            logX = logX.to_numpy()
         self.evolution = Evolution(logX, self.fig, gs10[0], self.update)
         self.higson = Higson(self.fig, gs10[1])
         self.reset = Button(self.fig, gs11[0],
@@ -248,13 +251,14 @@ class RunPlotter(object):
         """
         from anesthetic.samples import NestedSamples, DiffusiveNestedSamples
         if isinstance(self.samples, NestedSamples):
+            color = basic_cmap('C0')(1.)
             if self.type() == 'posterior':
                 beta = self.beta()
-                return self.samples.posterior_points(beta)[label], self.color
+                return self.samples.posterior_points(beta)[label], color
             else:
                 i = self.evolution()
                 logL = self.samples.logL.iloc[i]
-                return self.samples.live_points(logL)[label], self.color
+                return self.samples.live_points(logL)[label], color
         elif isinstance(self.samples, DiffusiveNestedSamples):
             if self.type() == 'posterior':
                 # beta = self.beta()
@@ -262,8 +266,9 @@ class RunPlotter(object):
                 raise NotImplementedError("Posterior visualization is not supported yet for DNest4.")
             else:
                 i = self.evolution()
-                samples = self.samples.samples_at_level(i, label)
-                return samples, self.color
+                colors = [basic_cmap('C0')(float(j) / float(i+1)) for j in range(1,i+2)]
+                samples = [self.samples.samples_at_level(j, label) for j in range(i+1)]
+                return samples, colors
         else:
             raise NotImplementedError("Interactive plot for type", type(self.samples), "is not supported yet.")
 
@@ -278,17 +283,17 @@ class RunPlotter(object):
             n = np.max(self.samples.samples.ID.unique())
             # LX = self.samples.samples['posterior weights']
             # LX = logX
-            LX = self.samples.logL*beta + logX
-            LX = np.exp(LX-LX.max())
+            # LX = self.samples.logL*beta + logX
+            LX = self.samples.LX
+            LX = np.exp(np.log(LX) - np.log(LX.max()))
+            # p = logX.argsort()
+            # LX = LX[p]
+            # logX = logX[p]
+            # LX = self.samples.logX()
         else:
             n = self.samples.nlive.iloc[i]
             LX = self.samples.logL*beta + logX
             LX = np.exp(LX-LX.max())
-
-        import pandas as pd
-        with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-            print('logX\n',logX)
-            print('LX\n', LX)
 
         self.triangle.update(self.points)
 

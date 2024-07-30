@@ -270,17 +270,20 @@ class TrianglePlot(Widget):
             for x, ax in row.items():
                 if ax is not None:
                     if x == y:
-                        values, color = f(x)
-                        datx, daty = histogram(values, bins='auto')
-                        ax.twin.lines[0].set_xdata(datx)
-                        ax.twin.lines[0].set_ydata(daty)
-                        ax.twin.lines[0].set_color(color)
+                        ax.twin.clear()
+                        _values, _color = f(x)
+                        for i, color in enumerate(_color):
+                            # datx, daty = histogram(values, bins='auto')
+                            ax.twin.hist(_values[i], color=color, histtype='bar' if i==len(_color)-1 else 'step')
+                            # ax.twin.lines[0].set_xdata(datx)
+                            # ax.twin.lines[0].set_ydata(daty)
+                            # ax.twin.lines[0].set_color(color)
                     else:
-                        x_values, color = f(x)
-                        y_values, color = f(y)
-                        ax.lines[0].set_color(color)
-                        ax.lines[0].set_xdata(x_values)
-                        ax.lines[0].set_ydata(y_values)
+                        ax.clear()
+                        _x_values, _x_color = f(x)
+                        _y_values, _y_color = f(y)
+                        for i, color in enumerate(_x_color):
+                            ax.plot(_x_values[i], _y_values[i], 'o', color=color)
 
     def reset_range(self):
         """Reset the range of each grid."""

@@ -31,6 +31,8 @@ def read_dnest4(root,
     sample_info_file = 'sample_info.txt'
     weights_file = 'weights.txt'
     prior_weights_file = 'log_prior_weights.txt'
+    posterior_weights = 'p_samples0.txt'
+    logx_samples = 'logx_samples0.txt'
 
     print(os.path.join(root, levels_file))
 
@@ -39,6 +41,8 @@ def read_dnest4(root,
     sample_info = np.loadtxt(os.path.join(root, sample_info_file), dtype=float, delimiter=' ', comments='#')
     weights = np.loadtxt(os.path.join(root, weights_file), dtype=float, delimiter=' ', comments='#')
     prior_weights = np.loadtxt(os.path.join(root, prior_weights_file), dtype=float, delimiter=' ', comments='#')
+    logx_samples = np.genfromtxt(os.path.join(root, logx_samples), dtype=float, delimiter=' ', comments='#', skip_header=0)
+    posterior_weights = np.genfromtxt(os.path.join(root, posterior_weights), dtype=float, delimiter=' ', comments='#', skip_header=0)
     n_params = samples.shape[1]
     columns = heuristically_determine_columns(n_params)
 
@@ -48,6 +52,8 @@ def read_dnest4(root,
                       columns=columns,
                       weights=weights,
                       prior_weights=prior_weights,
+                      logx_samples=logx_samples,
+                      posterior_weights=posterior_weights,
                       logL=sample_info[:, 1],
                       labels=columns,
                       *args,

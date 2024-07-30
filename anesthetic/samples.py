@@ -644,6 +644,10 @@ class DiffusiveNestedSamples:
     # TODO repace column names
     _metadata = Samples._metadata + ['root', '_beta']
 
+    def __len__(self):
+        print('levels shape', self.levels.shape)
+        return self.levels.shape[0]
+
     def __init__(self, *args, **kwargs):
         self.logzero = kwargs.pop('logzero', -1e300)
         self._beta = kwargs.pop('beta', 1.)
@@ -652,6 +656,8 @@ class DiffusiveNestedSamples:
         sample_info = kwargs.pop('sample_info', None)
         weights = kwargs.pop('weights', None)
         prior_weights = kwargs.pop('prior_weights', None)
+        self.logx_samples = kwargs.pop('logx_samples', None)
+        self.posterior_weights = kwargs.pop('posterior_weights', None)
         columns = kwargs.pop('columns', None)
 
         self.samples = pandas.DataFrame(np.concatenate([samples, sample_info], axis=1),
@@ -694,12 +700,11 @@ class DiffusiveNestedSamples:
 
         self.samples['log_X'] = self.log_X_samples
 
-        print('sample_info[:,1]')
-        print(sample_info[:,1])
-        print('prior weights')
-        print(prior_weights)
-        self.samples['LX'] = sample_info[:, 1] + prior_weights
-        # print('log x samples', self.log_X_samples)
+        # print('sample_info[:,1]')
+        # print(sample_info[:,1])
+        # print('prior weights')
+        # print(prior_weights)
+        self.samples['LX'] = sample_info[:, 1] # + prior_weights
 
     def samples_at_level(self, level_index, label):
         return self.samples[self.samples.level == level_index][label].to_numpy()
@@ -722,12 +727,16 @@ class DiffusiveNestedSamples:
         if nsamples is None:
             WeightedSeries like self
         """
-        return self.samples['log_X']
+        return self.logx_samples
 
     @property
     def logL(self):
         """Log-Likelihood."""
         return self.samples['LX']
+
+    @property
+    def LX(self):
+        return self.posterior_weights
 
     def gui(self, params=None):
         """Construct a graphical user interface for viewing samples."""
