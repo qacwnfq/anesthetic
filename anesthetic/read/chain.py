@@ -20,7 +20,7 @@ def read_chains(root, *args, **kwargs):
         * `Nested_fit <https://github.com/martinit18/Nested_Fit>`_,
         * `CosmoMC <https://github.com/cmbant/CosmoMC>`_,
         * `Cobaya <https://github.com/CobayaSampler/cobaya>`_,
-        * `DNest4 <https://github.com/eggplantbren/DNest4/tree/master/code>`_,
+        * `DNest4 <https://github.com/eggplantbren/DNest4/>`_,
         * anything `GetDist <https://github.com/cmbant/getdist>`_ compatible,
         * files produced using ``DataFrame.to_csv()`` from anesthetic.
 

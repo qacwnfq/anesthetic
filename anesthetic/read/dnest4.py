@@ -1,60 +1,55 @@
 """Read NestedSamples from dnest4 output files"""
 import os
 import numpy as np
-from anesthetic.samples import DiffusiveNestedSamples
+from anesthetic.samples import NestedSamples
 
 
-def heuristically_determine_columns(n_params):
+def determine_columns_and_labels(n_params, header, delim=' '):
     """
-    heuristically determines column names. If none are given, parameters are named x_i
+    Determines column names from DNest4 output. If none are given by DNest4, parameters are named x_i.
+    ' ' is the default delimiter in DNest4.
     """
-    ## TODO: check if user gave DNest4 a list of parameter names for the model
-    return [f'x{i}' for i in range(n_params)]
+    dnest4_column_descriptions = header[1:].lstrip().split(delim)
+    if len(dnest4_column_descriptions) != n_params:
+        # header can not have contained column names and default values are used
+        columns = [f'x_{i}' for i in range(n_params)]
+    else:
+        columns = [d.strip() for d in dnest4_column_descriptions]
+    labels = {c: '$' + c + '$' for c in columns}
+    return columns, labels
 
 
 def read_dnest4(root,
-                *args,
-                **kwargs):
+                levels_file='levels.txt',
+                sample_file='sample.txt',
+                sample_info_file='sample_info.txt'):
     """Read dnest4 output files.
 
     Parameters
     ----------
-    levels_file default output name from dnest4
-    sample_file default output name from dnest4
-    sample_info_file default output name from dnest4
     root : str
         root specify the directory only, no specific roots,
         The files read files are levels_file, sample_file and sample_info.
+    levels_file: str
+        output name from DNest4
+    sample_file: str
+        output name from DNest4
+    sample_info_file: str
+        output name from DNest4
     """
-    levels_file = 'levels.txt'
-    sample_file = 'sample.txt'
-    sample_info_file = 'sample_info.txt'
-    weights_file = 'weights.txt'
-    prior_weights_file = 'log_prior_weights.txt'
-    posterior_weights = 'p_samples0.txt'
-    logx_samples = 'logx_samples0.txt'
-
-    print(os.path.join(root, levels_file))
 
     levels = np.loadtxt(os.path.join(root, levels_file), dtype=float, delimiter=' ', comments='#')
-    samples = np.genfromtxt(os.path.join(root, sample_file), dtype=float, delimiter=' ', comments='#', skip_header=1)
+    samples = np.genfromtxt(os.path.join(root, sample_file), dtype=float, delimiter=' ', comments='#')
     sample_info = np.loadtxt(os.path.join(root, sample_info_file), dtype=float, delimiter=' ', comments='#')
-    weights = np.loadtxt(os.path.join(root, weights_file), dtype=float, delimiter=' ', comments='#')
-    prior_weights = np.loadtxt(os.path.join(root, prior_weights_file), dtype=float, delimiter=' ', comments='#')
-    logx_samples = np.genfromtxt(os.path.join(root, logx_samples), dtype=float, delimiter=' ', comments='#', skip_header=0)
-    posterior_weights = np.genfromtxt(os.path.join(root, posterior_weights), dtype=float, delimiter=' ', comments='#', skip_header=0)
-    n_params = samples.shape[1]
-    columns = heuristically_determine_columns(n_params)
 
-    return DiffusiveNestedSamples(samples=samples,
-                      sample_info=sample_info,
-                      levels=levels,
-                      columns=columns,
-                      weights=weights,
-                      prior_weights=prior_weights,
-                      logx_samples=logx_samples,
-                      posterior_weights=posterior_weights,
-                      logL=sample_info[:, 1],
-                      labels=columns,
-                      *args,
-                      **kwargs)
+    with open(os.path.join(root, sample_file), 'r') as f:
+        header = f.readline()
+
+    n_params = samples.shape[1]
+    columns, labels = determine_columns_and_labels(n_params, header)
+
+    sample_level = sample_info[:, 0].astype(int)
+    logL = sample_info[:, 1]
+    logL_birth = levels[sample_level, 1]
+
+    return NestedSamples(samples, logL=logL, logL_birth=logL_birth, columns=columns, labels=labels)
