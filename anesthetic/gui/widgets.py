@@ -226,7 +226,7 @@ class TrianglePlot(Widget):
         self.fig.delaxes(self.ax)
         _, self.ax = make_2d_axes([], fig=self.fig, subplot_spec=self.gridspec)
 
-    def draw(self, params, labels={}):
+    def draw(self, params, labels={}, color='k'):
         """Draw a new triangular grid for list of parameters.
 
         Parameters
@@ -252,9 +252,9 @@ class TrianglePlot(Widget):
             for x, ax in row.items():
                 if ax is not None:
                     if x == y:
-                        ax.twin.plot([None], [None], 'k-')
+                        ax.twin.plot([None], [None], '-', color=color)
                     else:
-                        ax.plot([None], [None], 'k.')
+                        ax.plot([None], [None], '.', color=color)
 
     def update(self, f):
         """Update the points in the triangle plot using f function.

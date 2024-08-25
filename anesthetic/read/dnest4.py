@@ -1,7 +1,7 @@
 """Read NestedSamples from dnest4 output files"""
 import os
 import numpy as np
-from anesthetic.samples import NestedSamples
+from anesthetic.samples import DiffusiveNestedSamples
 
 
 def determine_columns_and_labels(n_params, header, delim=' '):
@@ -51,5 +51,13 @@ def read_dnest4(root,
     sample_level = sample_info[:, 0].astype(int)
     logL = sample_info[:, 1]
     logL_birth = levels[sample_level, 1]
+    particle_IDs = sample_info[:, 3]
+    # particle IDs start at 0, so num_particles is max(ID)+1
+    num_particles = np.max(particle_IDs) + 1
 
-    return NestedSamples(samples, logL=logL, logL_birth=logL_birth, columns=columns, labels=labels)
+    return DiffusiveNestedSamples(num_particles,
+                                  samples,
+                                  logL=logL,
+                                  logL_birth=logL_birth,
+                                  columns=columns,
+                                  labels=labels)

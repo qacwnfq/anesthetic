@@ -646,6 +646,8 @@ class NestedSamples(Samples):
     We extend the :class:`Samples` class with the additional methods:
 
     * ``self.live_points(logL)``
+    * ``self.n_live(i)``
+    * ``self.LX(beta, logX)``
     * ``self.set_beta(beta)``
     * ``self.prior()``
     * ``self.posterior_points(beta)``
@@ -1164,6 +1166,14 @@ class NestedSamples(Samples):
         i = ((self.logL >= logL) & (self.logL_birth < logL)).to_numpy()
         return Samples(self[i]).set_weights(None)
 
+    def n_live(self, i):
+        return self.nlive.iloc[i]
+
+    def LX(self, beta, logX):
+        LX = self.logL*beta + logX
+        return LX
+
+
     def dead_points(self, logL=None):
         """Get the dead points at a given contour.
 
@@ -1333,6 +1343,29 @@ class NestedSamples(Samples):
             self._update_inplace(samples)
         else:
             return samples.__finalize__(self, "recompute")
+
+
+class DiffusiveNestedSamples(NestedSamples):
+    """Storage and plotting tools for Diffusive Nested Sampling samples.
+
+    We overwrite the following methods of the :class:`NestedSamples` class:
+
+    * ``self.n_live(i)``
+    * ``self.LX(beta, logX)``
+
+    """
+    def __init__(self, num_particles, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.num_particles = num_particles
+
+    def n_live(self, *args):
+        # n_live is constant because diffusive nested sampling keeps all particles alive and evolves them using MCMC
+        return self.num_particles
+
+    def LX(self, beta, logX):
+        LX = super().LX(beta, logX)
+        return LX
+
 
 
 def merge_nested_samples(runs):

@@ -5,6 +5,7 @@ from matplotlib.gridspec import (GridSpec as GS,
                                  GridSpecFromSubplotSpec as sGS)
 from anesthetic.gui.widgets import (Widget, Slider, Button,
                                     RadioButtons, TrianglePlot, CheckButtons)
+from anesthetic.plot import basic_cmap
 
 
 class Higson(Widget):
@@ -155,10 +156,14 @@ class RunPlotter(object):
     param_choice : :class:`anesthetic.gui.widgets.CheckButtons`
         Checkbox that selects which parameters to plot.
 
+    plot_color : str
+        color for plots and color maps
+
     """
 
-    def __init__(self, samples, params=None):
+    def __init__(self, samples, params=None, color='k'):
         self.samples = samples
+        self.color = color
 
         if params:
             self.params = np.array(params)
@@ -199,7 +204,7 @@ class RunPlotter(object):
         gs0 = sGS(1, 2, width_ratios=[19, 1], subplot_spec=gs[0])
         gs1 = sGS(1, 3, width_ratios=[4, 1, 1], subplot_spec=gs[1])
         gs10 = sGS(2, 1, height_ratios=[1, 4], subplot_spec=gs1[0])
-        gs11 = sGS(3, 1, height_ratios=[1, 1, 2], subplot_spec=gs1[1])
+        gs11 = sGS(3, 1, height_ratios=[1, 1, 3], subplot_spec=gs1[1])
 
         self.triangle = TrianglePlot(self.fig, gs0[0])
         beta = np.logspace(-10, 10, 101)
@@ -213,14 +218,15 @@ class RunPlotter(object):
         self.reload = Button(self.fig, gs11[1],
                              self.reload_file, 'Reload File')
         self.type = RadioButtons(self.fig, gs11[2],
-                                 ('live', 'posterior'), self.update)
+                                 ('live', 'visited', 'posterior'), self.update)
         self.param_choice = CheckButtons(self.fig, gs1[2],
                                          self.params, self.redraw)
 
     def redraw(self, _):
         """Redraw the triangle plot upon parameter updating."""
         self.triangle.draw(self.param_choice(),
-                           self.samples.get_labels_map())
+                           self.samples.get_labels_map(),
+                           self.color)
         self.update(None)
         self.reset_range(None)
         self.fig.tight_layout()
@@ -243,6 +249,16 @@ class RunPlotter(object):
         if self.type() == 'posterior':
             beta = self.beta()
             return self.samples.posterior_points(beta)[label]
+        elif self.type() == 'visited':
+            raise NotImplementedError("not implemented")
+            i = self.evolution()
+            level_index = self.samples.get_level(i)
+            # colors = [basic_cmap(self.color)(float(j) / float(i + 1)) for j in range(1, i + 2)]
+            # samples = []
+            # for j in range(len(colors)):
+            #     logL = self.samples.logL.iloc[j]
+            #     samples.append(self.samples.live_points(logL)[label])
+            # return samples[-1] #, colors
         else:
             i = self.evolution()
             logL = self.samples.logL.iloc[i]
@@ -252,11 +268,12 @@ class RunPlotter(object):
         """Update all the plots upon slider changes."""
         logX = np.log(self.samples.nlive / (self.samples.nlive+1)).cumsum()
         beta = self.beta()
-        LX = self.samples.logL*beta + logX
-        LX = np.exp(LX-LX.max())
         i = self.evolution()
         logL = self.samples.logL.iloc[i]
-        n = self.samples.nlive.iloc[i]
+
+        LX = self.samples.LX(beta, logX)
+        LX = np.exp(LX-LX.max())
+        n = self.samples.n_live(i)
 
         self.triangle.update(self.points)
 
